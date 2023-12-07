@@ -61,7 +61,7 @@ public class RacerAgent : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        // total obs space 
+        // total obs space 46
 
         // linear velocity vec3
 
@@ -77,11 +77,7 @@ public class RacerAgent : Agent
         // previous actions float[4]
         sensor.AddObservation(m_PreviousActions);
 
-        // centerline angle float
-
-        // look ahead float[100]
-
-        // progress along track (sin and cos components) float[2]
+        // centerline angle float, look ahead float[100], progress along track (sin and cos components) float[2]
 
         (var centerlineAngle, var lookAhead, var progress) = GetSplineObservations();
         m_LookAheadBuffer = lookAhead;
@@ -146,7 +142,7 @@ public class RacerAgent : Agent
     (float, Vector3[], Vector2) GetSplineObservations()
     {
         SplineUtility.GetNearestPoint(m_CenterLineSpline, transform.position - m_SplineRoot, out float3 nearestPoint, out float t);
-        Debug.Log(nearestPoint + (float3)m_SplineRoot);
+        // Debug.Log(nearestPoint + (float3)m_SplineRoot);
         var centerLineDirection = SplineUtility.EvaluateTangent(m_CenterLineSpline, t);
         var centerLineAngle = Vector3.Angle(centerLineDirection, transform.forward);
         var lookahead = new Vector3[numberOfLookAheadPoints];
