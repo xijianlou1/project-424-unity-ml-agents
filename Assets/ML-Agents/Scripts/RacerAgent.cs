@@ -51,6 +51,19 @@ public class RacerAgent : Agent
 
     public float Progress => GetProgress() * Mathf.Sign(m_Alignment);
 
+    
+    [SerializeField]
+    public event Action wallHit;
+
+    public float[] CurrentActions => m_CurrentActions;
+    public float[] PreviousActions => m_PreviousActions;
+
+    public Vector3 Velocity => m_Velocity;
+
+    public float CumulativeTimeOffCourse => m_CumulativeTimeOffCourse;
+
+    public float CumulativeWallHitTime => m_CumulativeWallHitTime;
+
     Rigidbody m_RigidBody;
     Vector3 m_InitialPosition;
     Transform m_InitialTransform;
@@ -58,6 +71,7 @@ public class RacerAgent : Agent
     Steering.Settings m_SteeringSettings;
     Vector3 m_PreviousVelocity;
     float[] m_PreviousActions;
+    float[] m_CurrentActions;
     Spline m_CenterLineSpline;
     Vector3[] m_LookAheadBuffer;
     Vector3 m_SplineRoot;
@@ -65,11 +79,20 @@ public class RacerAgent : Agent
     Vector3 m_PreviousNearestPoint;
     float m_Alignment;
     Vector3 m_Acceleration;
+    Vector3 m_Velocity;
     float m_TrackLength;
+    float m_CumulativeTimeOffCourse;
+    float m_CumulativeWallHitTime;
 
     void FixedUpdate()
     {
-        m_Acceleration = (m_RigidBody.velocity - m_PreviousVelocity) / Time.fixedDeltaTime;
+        m_Velocity = m_RigidBody.velocity;
+        m_Acceleration = (m_Velocity - m_PreviousVelocity) / Time.fixedDeltaTime;
+        CheckVertical();
+        if (CheckOffCourse())
+        {
+            m_CumulativeTimeOffCourse += Time.fixedDeltaTime;
+        }
     }
 
     public override void Initialize()
@@ -82,7 +105,8 @@ public class RacerAgent : Agent
         m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.EnableProcessedInput, 1);
         m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputGear, 1);
         m_SteeringSettings = m_Vehicle.GetInternalObject(typeof(Steering.Settings)) as Steering.Settings;
-        m_PreviousActions = new float[4];
+        m_PreviousActions = new float[3];
+        m_CurrentActions = new float[3];
         m_CenterLineSpline = trackCenterLineSplineContainer[0];
         m_SplineRoot = trackCenterLineSplineContainer.transform.position;
         DecisionPeriod = GetComponent<DecisionRequester>().DecisionPeriod;
@@ -102,6 +126,7 @@ public class RacerAgent : Agent
         }
         
         Array.Clear(m_PreviousActions, 0, m_PreviousActions.Length);
+        Array.Clear(m_CurrentActions, 0, m_CurrentActions.Length);
         m_PreviousVelocity = Vector3.zero;
         
         StartCoroutine(ResetPhysicsAndPose(newPosition + new Vector3(0f, 0.5f, 0f), newForwardDirection));
@@ -129,7 +154,7 @@ public class RacerAgent : Agent
         sensor.AddObservation(transform.InverseTransformDirection(m_RigidBody.angularVelocity));
 
         // previous actions float[4]
-        sensor.AddObservation(m_PreviousActions);
+        sensor.AddObservation(m_CurrentActions);
 
         // center line angle float, center line offset float, look ahead float[10], progress along track (sin and cos components) float[2]
         var (centerLineAngle, centerLineOffset, lookAhead, progress) = GetSplineObservations();
@@ -143,9 +168,9 @@ public class RacerAgent : Agent
             sensor.AddObservation(transform.InverseTransformPoint(point));
         }
 
-        sensor.AddObservation(progress);
+        // sensor.AddObservation(progress);
         
-        sensor.AddObservation(transform.InverseTransformDirection(centerLineOffset));
+        // sensor.AddObservation(transform.InverseTransformDirection(centerLineOffset));
 
         // wall collisions (binary 1 = hit) float - Not sure we need this if we reset on collision - tbd
         
@@ -161,14 +186,16 @@ public class RacerAgent : Agent
         m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputSteerAngle, (int)(steeringInput * 10000f));
         var throttleInput = Mathf.Clamp01(actionBuffers.ContinuousActions[1]);
         var brakeInput = Mathf.Clamp01(-actionBuffers.ContinuousActions[1]);
-        var drsInput = Mathf.Clamp01((actionBuffers.ContinuousActions[2] + 1) / 2);
+        // var drsInput = Mathf.Clamp01((actionBuffers.ContinuousActions[2] + 1) / 2);
         m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputThrottlePosition, (int)(throttleInput * 10000f));
         m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputBrakePosition, (int)(brakeInput * 10000f));
-        m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputDrsPosition, (int)(drsInput * 1000f));
-        m_PreviousActions[0] = steeringInput;
-        m_PreviousActions[1] = throttleInput;
-        m_PreviousActions[2] = brakeInput;
-        m_PreviousActions[3] = drsInput;
+        // m_Vehicle.data.Set(Channel.Custom, Perrinn424Data.InputDrsPosition, (int)(drsInput * 1000f));
+        m_CurrentActions.CopyTo(m_PreviousActions, 0);
+        m_CurrentActions[0] = steeringInput;
+        m_CurrentActions[1] = throttleInput;
+        m_CurrentActions[2] = brakeInput;
+        // m_CurrentActions[3] = drsInput;
+        
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -176,7 +203,7 @@ public class RacerAgent : Agent
         var continuousActionsOut = actionsOut.ContinuousActions;
         continuousActionsOut[0] = Input.GetAxis("Horizontal");
         continuousActionsOut[1] = Input.GetAxis("Vertical");
-        continuousActionsOut[2] = 0f;
+        // continuousActionsOut[2] = 0f;
     }
 
     IEnumerator ResetPhysicsAndPose(Vector3 pose, Vector3 direction)
@@ -203,7 +230,16 @@ public class RacerAgent : Agent
     {
         if (other.gameObject.CompareTag("Wall"))
         {
-            EndEpisode();
+            // EndEpisode();
+            wallHit?.Invoke();
+        }
+    }
+
+    void OnCollisionStay(Collision other)
+    {
+        if (other.gameObject.CompareTag("Wall"))
+        {
+            m_CumulativeWallHitTime += Time.fixedDeltaTime;
         }
     }
 
@@ -218,8 +254,9 @@ public class RacerAgent : Agent
         m_CurrentNearestPoint = nearestPoint;
         var centerLineDirection = SplineUtility.EvaluateTangent(m_CenterLineSpline, t);
         var forward = currentTransform.forward;
-        var up = currentTransform.up;
-        var centerLineAngle = Vector3.SignedAngle(centerLineDirection, forward, up);
+        // var up = currentTransform.up;
+        var centerLineAngle = Vector2.SignedAngle(new Vector2(centerLineDirection.x, centerLineDirection.z), new Vector2(forward.x, forward.z));
+        // var centerLineAngle = Vector3.SignedAngle(centerLineDirection, forward, up);
         m_Alignment = Vector3.Dot(centerLineDirection, forward);
         var newLookahead = new Vector3[lookAheadNumber];
 
@@ -246,6 +283,17 @@ public class RacerAgent : Agent
     {
         var terrainSense = terrainSensor.Sense().Sum();
         return terrainSense >= 0.75f;
+    }
+
+    void CheckVertical()
+    {
+        var agentUp = transform.up;
+        var upAngle = Vector3.Angle(Vector3.up, agentUp);
+        if (upAngle > 60)
+        {
+            AddReward(-10f);
+            EndEpisode();
+        }
     }
 
     void OnDrawGizmos()

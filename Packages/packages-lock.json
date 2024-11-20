@@ -77,6 +77,15 @@
       },
       "hash": "f442194297f878a84eb60c04eccf7662cbc9ff60"
     },
+    "com.unity.recorder": {
+      "version": "4.0.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.timeline": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.sentis": {
       "version": "1.3.0-pre.2",
       "depth": 1,

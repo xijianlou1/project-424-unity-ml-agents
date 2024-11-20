@@ -10221,6 +10221,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   racerAgent: {fileID: 773184392}
+  steeringPenaltyScale: 0
+  wallContactPenaltyScale: 0.0005
+  offCoursePenaltyScale: 0.0005
 --- !u!4 &515814716
 Transform:
   m_ObjectHideFlags: 0
@@ -82483,11 +82486,51 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1428315025114862297, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: m_Model
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1428315025114862297, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: m_DeterministicInference
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1428315025114862297, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: m_BrainParameters.VectorObservationSize
+      value: 74
+      objectReference: {fileID: 0}
+    - target: {fileID: 1428315025114862297, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: m_BrainParameters.VectorActionSize.Array.data[0]
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1428315025114862297, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: m_BrainParameters.m_ActionSpec.m_NumContinuousActions
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1572492222012398704, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
         type: 3}
       propertyPath: timer
       value: 
       objectReference: {fileID: 114863622256485037}
+    - target: {fileID: 3818774628526337623, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: MaxStep
+      value: 30000
+      objectReference: {fileID: 0}
+    - target: {fileID: 3818774628526337623, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: lookAheadNumber
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3818774628526337623, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: lookAheadMaxTime
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 3818774628526337623, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
         type: 3}
       propertyPath: trackCenterLineSplineContainer
@@ -82503,6 +82546,11 @@ PrefabInstance:
       propertyPath: lapTimer
       value: 
       objectReference: {fileID: 114863622256485037}
+    - target: {fileID: 8032927131247169412, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
+        type: 3}
+      propertyPath: TakeActionsBetweenDecisions
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8499339850899232848, guid: 81d925b8be0a74a42b0bdcf9f6b0ed8f,
         type: 3}
       propertyPath: m_Name
