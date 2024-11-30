@@ -1,7 +1,6 @@
+using System;
 using System.Collections;
 using System.Linq;
-using Cinemachine;
-using Perrinn424;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
@@ -15,6 +14,7 @@ public class Perrinn424Agent : Agent
     public LookAheadSensor lookAheadSensor;
     public TerrainSensor terrainSensor;
     public StateEstimator stateEstimator;
+    public event Action wallHit;
 
     Vector3 m_InitialPosition;
     Quaternion m_InitialRotation;
@@ -26,6 +26,8 @@ public class Perrinn424Agent : Agent
     VehicleBase m_VehicleBase;
     Steering.Settings m_SteeringSettings;
     AgentPilot m_AgentPilot;
+    
+    public Vector3 Velocity => m_CurrentVelocity;
     
     void FixedUpdate()
     {
@@ -44,9 +46,7 @@ public class Perrinn424Agent : Agent
         {
             m_Rigidbody.velocity = Vector3.zero;
             m_Rigidbody.angularVelocity = Vector3.zero;
-            AddReward(-10f);
-            EndEpisode();
-            Debug.Log("Hit wall!");
+            wallHit?.Invoke();
         }
     }
 
@@ -66,7 +66,7 @@ public class Perrinn424Agent : Agent
     {
         ResetVariables();
         ResetSensors();
-        ResetControllers();
+        ResetControlInputs();
         StartCoroutine(ResetPhysicsAndPose());
     }
     
@@ -74,6 +74,7 @@ public class Perrinn424Agent : Agent
     {
         lookAheadSensor.Sense();
         var terrainSense = terrainSensor.Sense().Sum();
+        
     }
 
     public override void OnActionReceived(ActionBuffers actionBuffers)
@@ -82,14 +83,19 @@ public class Perrinn424Agent : Agent
         var steeringInput = 360f * Mathf.Clamp(actionBuffers.ContinuousActions[0] / m_SteeringSettings.steeringWheelRange * physicalWheelRange, -1.0f, 1.0f);
         var throttleInput = 100f * Mathf.Clamp01(actionBuffers.ContinuousActions[1]);
         var brakeInput = 100f * Mathf.Clamp01(-actionBuffers.ContinuousActions[1]);
-        Sample agentActionSample = new Sample()
+        var agentActionSample = new Sample();
+        if (Academy.Instance.AutomaticSteppingEnabled)
         {
-            steeringAngle = steeringInput, 
-            throttle = throttleInput, 
-            brake = brakeInput,
-            drsPosition = 0,
-            gear = 1,
-        };
+            agentActionSample = new Sample()
+            {
+                steeringAngle = steeringInput, 
+                throttle = throttleInput, 
+                brake = brakeInput,
+                drsPosition = 0,
+                gear = 1,
+            };
+        }
+        
         
         m_AgentPilot.currentAgentSample = agentActionSample;
         
@@ -97,9 +103,12 @@ public class Perrinn424Agent : Agent
 
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        var continuousActionsOut = actionsOut.ContinuousActions;
-        continuousActionsOut[0] = Input.GetAxis("Horizontal");
-        continuousActionsOut[1] = Input.GetAxis("Vertical");
+        if (Academy.Instance.AutomaticSteppingEnabled)
+        {
+            var continuousActionsOut = actionsOut.ContinuousActions;
+            continuousActionsOut[0] = Input.GetAxis("Horizontal");
+            continuousActionsOut[1] = Input.GetAxis("Vertical");
+        }
     }
 
     bool CheckOffCourse()
@@ -126,18 +135,29 @@ public class Perrinn424Agent : Agent
         m_CurrentAcceleration = Vector3.zero;
     }
 
-    void ResetControllers()
-    {
-    }
-
     void ResetSensors()
     { 
         stateEstimator.Reset();
     }
 
+    void ResetControlInputs()
+    {
+        m_AgentPilot.currentAgentSample = new Sample()
+        {
+            steeringAngle = 0f, 
+            throttle = 0f, 
+            brake = 0f,
+            drsPosition = 0,
+            gear = 0,
+        };
+    }
+
     IEnumerator ResetPhysicsAndPose()
     {
         Academy.Instance.AutomaticSteppingEnabled = false;
+        m_VehicleBase.enabled = false;
+        m_Rigidbody.isKinematic = false;
+        yield return new WaitForSeconds(0.25f);
         m_Rigidbody.velocity = Vector3.zero;
         m_Rigidbody.angularVelocity = Vector3.zero;
         yield return new WaitForSeconds(0.25f);
@@ -150,5 +170,6 @@ public class Perrinn424Agent : Agent
         m_Rigidbody.velocity = Vector3.zero;
         m_Rigidbody.angularVelocity = Vector3.zero;
         Academy.Instance.AutomaticSteppingEnabled = true;
+        m_VehicleBase.enabled = true;
     }
 }
