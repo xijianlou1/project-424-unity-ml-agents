@@ -29,12 +29,14 @@ public class LookAheadSensor : MonoBehaviour
     
     [SerializeField]
     public Rigidbody rb;
+
+    public float CenterlineAlignment => m_CenterlineAlignment;
     
     Spline m_CenterLineSpline;
     Vector3 m_SplineRoot;
     Vector3 m_PreviousNearestPoint;
     Vector3 m_CurrentNearestPoint;
-    float m_Alignment;
+    float m_CenterlineAlignment;
     Vector3[] m_LookAheadBuffer;
     float m_TrackLength;
 
@@ -45,7 +47,7 @@ public class LookAheadSensor : MonoBehaviour
         m_TrackLength = trackCenterLineSplineContainer.CalculateLength();
     }
     
-    public (float, float3, Vector3[], Vector2) Sense()
+    public (float, float3, Vector3[], Vector2, float) Sense()
     {
         var currentTransform = transform;
         var position = currentTransform.position;
@@ -57,7 +59,7 @@ public class LookAheadSensor : MonoBehaviour
         var centerLineDirection = SplineUtility.EvaluateTangent(m_CenterLineSpline, t);
         var forward = currentTransform.forward;
         var centerLineAngle = -Vector2.SignedAngle(new Vector2(centerLineDirection.x, centerLineDirection.z), new Vector2(forward.x, forward.z));
-        m_Alignment = Vector3.Dot(centerLineDirection, forward);
+        m_CenterlineAlignment = Vector3.Dot(centerLineDirection, forward);
         var newLookahead = new Vector3[lookAheadNumber];
 
         for (int i = 0; i < lookAheadNumber; i++)
@@ -71,7 +73,7 @@ public class LookAheadSensor : MonoBehaviour
         
         m_LookAheadBuffer = newLookahead;
         
-        return (centerLineAngle, centerLineOffset, newLookahead, progress);
+        return (centerLineAngle, centerLineOffset, newLookahead, progress, t);
     }
     
     public (Vector3, Vector3) SampleStartingPosition()

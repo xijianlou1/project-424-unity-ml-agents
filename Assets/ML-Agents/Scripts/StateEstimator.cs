@@ -16,7 +16,7 @@ public class StateEstimator : MonoBehaviour
     {
         position = rb.transform.position;
         rotation = rb.transform.rotation.eulerAngles;
-        velocity = rb.velocity;
+        velocity = rb.transform.InverseTransformVector(rb.velocity);
         acceleration = (velocity - m_PreviousVelocity) / Time.fixedDeltaTime;
     }
 
