@@ -10,6 +10,8 @@ public class TerrainSensor : MonoBehaviour
     [SerializeField]
     GameObject[] sensorLocations;
 
+    float[] m_SensorValues;
+
     // public IEnumerable<float> SenseBatched()
     // {
     //     var results = new NativeArray<RaycastHit>(sensorLocations.Length, Allocator.TempJob);
@@ -54,7 +56,26 @@ public class TerrainSensor : MonoBehaviour
                     hits[i] = 1f / sensorLocations.Length;
             }
         }
+        
+        m_SensorValues = hits;
 
         return hits;
+    }
+
+    void OnDrawGizmos()
+    {
+        if (m_SensorValues != null)
+        {
+            for (int i = 0; i < m_SensorValues.Length; i++)
+            {
+                if (m_SensorValues[i] != 0f)
+                {
+                    var oldColor = Gizmos.color;
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawWireSphere(sensorLocations[i].transform.position, 0.1f);
+                    Gizmos.color = oldColor;
+                }
+            }
+        }
     }
 }
