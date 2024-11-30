@@ -38,7 +38,9 @@ public class Perrinn424Agent : Agent
     float m_CenterlineAlignment;
     float m_CurrentProgress;
     float m_PreviousProgress;
-    Sample m_CurrentSample;
+    Sample m_CurrentActions;
+    Sample m_PreviousActions;
+    bool m_WallContact = false;
     
     public Vector3 Velocity => m_CurrentVelocity;
     
@@ -61,6 +63,7 @@ public class Perrinn424Agent : Agent
     {
         if (collision.gameObject.CompareTag("Wall"))
         {
+            m_WallContact = true;
             wallHit?.Invoke();
         }
     }
@@ -69,7 +72,16 @@ public class Perrinn424Agent : Agent
     {
         if (other.gameObject.CompareTag("Wall"))
         {
+            m_WallContact = true;
             m_CumulativeWallHitTime += Time.fixedDeltaTime;
+        }
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        if (m_WallContact)
+        {
+            m_WallContact = false;
         }
     }
 
@@ -104,19 +116,45 @@ public class Perrinn424Agent : Agent
         m_CurrentProgress = centerlineProgress;
         var terrainSense = terrainSensor.Sense().Sum();
         
+        // total observations : 44
         
+        // linear velocity vec3 : 3
+        sensor.AddObservation(m_CurrentVelocity);
         
+        // linear acceleration vec3 : 3
+        sensor.AddObservation(m_CurrentAcceleration);
+        
+        // centerline angle float : 1
+        sensor.AddObservation(centerLineAngle);
+        
+        // previous steering command float : 1
+        sensor.AddObservation(m_PreviousActions.steeringAngle);
+        
+        // wall contact bool : 1
+        sensor.AddObservation(m_WallContact);
+        
+        // look ahead sensor newLookAhead.length : 10
+        foreach (var point in newLookahead)
+        {
+           sensor.AddObservation(transform.InverseTransformPoint(point));
+        }
+        
+        // off-course check bool : 1
+        sensor.AddObservation(CheckOffCourse());
+        
+        // off-course sense float[] : 4
+        sensor.AddObservation(terrainSensor.Sense().ToArray());
     }
 
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
         float physicalWheelRange = InputManager.instance.settings.physicalWheelRange;
         var steeringInput = 360f * Mathf.Clamp(actionBuffers.ContinuousActions[0] / m_SteeringSettings.steeringWheelRange * physicalWheelRange, -1.0f, 1.0f);
-        steeringInput = Mathf.MoveTowards(m_CurrentSample.steeringAngle, steeringInput, steeringRate * Time.fixedDeltaTime * DecisionPeriod);
+        steeringInput = Mathf.MoveTowards(m_CurrentActions.steeringAngle, steeringInput, steeringRate * Time.fixedDeltaTime * DecisionPeriod);
         var throttleInput = 100f * Mathf.Clamp01(actionBuffers.ContinuousActions[1]);
-        throttleInput = Mathf.MoveTowards(m_CurrentSample.throttle, throttleInput, throttleRate * Time.fixedDeltaTime * DecisionPeriod);
+        throttleInput = Mathf.MoveTowards(m_CurrentActions.throttle, throttleInput, throttleRate * Time.fixedDeltaTime * DecisionPeriod);
         var brakeInput = 100f * Mathf.Clamp01(-actionBuffers.ContinuousActions[1]);
-       brakeInput = Mathf.MoveTowards(m_CurrentSample.brake, brakeInput, brakeRate * Time.fixedDeltaTime * DecisionPeriod); 
+       brakeInput = Mathf.MoveTowards(m_CurrentActions.brake, brakeInput, brakeRate * Time.fixedDeltaTime * DecisionPeriod); 
         var agentActionSample = new Sample();
         if (Academy.Instance.AutomaticSteppingEnabled)
         {
@@ -130,7 +168,7 @@ public class Perrinn424Agent : Agent
             };
         }
         
-        m_CurrentSample = agentActionSample;
+        m_CurrentActions = agentActionSample;
         
         m_AgentPilot.currentAgentSample = agentActionSample;
         
