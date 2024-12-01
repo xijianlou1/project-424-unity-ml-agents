@@ -9,6 +9,7 @@ public class StateEstimator : MonoBehaviour
     public Vector3 rotation;
     public Vector3 velocity;
     public Vector3 acceleration;
+    public Vector3 angularVelocity;
 
     Vector3 m_PreviousVelocity;
 
@@ -16,8 +17,10 @@ public class StateEstimator : MonoBehaviour
     {
         position = rb.transform.position;
         rotation = rb.transform.rotation.eulerAngles;
+        m_PreviousVelocity = velocity;
         velocity = rb.transform.InverseTransformVector(rb.velocity);
         acceleration = (velocity - m_PreviousVelocity) / Time.fixedDeltaTime;
+        angularVelocity = rb.transform.InverseTransformVector(rb.angularVelocity);
     }
 
     public void Reset()

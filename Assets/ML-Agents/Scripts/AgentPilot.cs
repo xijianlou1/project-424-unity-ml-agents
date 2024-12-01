@@ -16,6 +16,9 @@ public class AgentPilot : BaseAutopilot
         [SerializeField]
         PathDrawer pathDrawer;
         
+        [SerializeField]
+        Perrinn424Agent perrinnAgent;
+        
         [Header("Setup")]
 
         [Tooltip("Sets the agent to be the pilot. Overrides the Auto Pilot Start.")]
@@ -78,6 +81,7 @@ public class AgentPilot : BaseAutopilot
         public override void OnDisableVehicle()
         {
             vehicle.onBeforeUpdateBlocks -= UpdateAutopilot;
+            SetStatus(false);
         }
 
         public void UpdateAutopilot()
@@ -146,8 +150,7 @@ public class AgentPilot : BaseAutopilot
             {
                 if (!CanOperate())
                 {
-                    Debug.LogWarning("Autopilot can't operate from these conditions");
-                    return;
+                    Debug.LogWarning("Autopilot can't operate from these conditions, resetting.");
                 }
             }
             else
@@ -161,13 +164,13 @@ public class AgentPilot : BaseAutopilot
         bool CanOperate()
         {
 
-            Quaternion pathRotation = recordedLap.samples[m_AutopilotSearcher.StartIndex].rotation;
-            float yawError = RotationCorrector.YawError(vehicle.transform.rotation, pathRotation);
-
-            if (Mathf.Abs(yawError) > 30f)
-            {
-                return false;
-            }
+            // Quaternion pathRotation = recordedLap.samples[m_AutopilotSearcher.StartIndex].rotation;
+            // float yawError = RotationCorrector.YawError(vehicle.transform.rotation, pathRotation);
+            //
+            // if (Mathf.Abs(yawError) > 30f)
+            // {
+            //     return false;
+            // }
 
             return true;
         }
@@ -207,5 +210,5 @@ public class AgentPilot : BaseAutopilot
         public override float MaxForceD => PIDInfo.MaxForceD; //TODO remove MaxForceD
         public override bool IsStartup => startup.isStartUp;
 
-        public Sample currentAgentSample { get; set; }
+        public Sample currentAgentSample;
     }

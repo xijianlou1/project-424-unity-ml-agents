@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.MLAgents;
 using UnityEngine;
 
@@ -9,10 +10,15 @@ public class Perrinn424RewardSystem : MonoBehaviour
     Perrinn424Agent perrinn424Agent;
 
     [SerializeField]
+    float progressScale = 5e-4f;
+    
+    [SerializeField]
     float wallContactPenaltyScale = 5e-4f;
 
     [SerializeField]
     float offCoursePenaltyScale = 5e-4f;
+    
+    public float currentReward;
 
     float m_PreviousTimeOffCourse;
     float m_PreviousWallHitTime;
@@ -20,26 +26,29 @@ public class Perrinn424RewardSystem : MonoBehaviour
     void OnEnable()
     {
         Academy.Instance.AgentPreStep += AddStepReward;
-        perrinn424Agent.wallHit += OnWallHit;
+        // perrinn424Agent.wallHit += OnWallHit;
     }
 
     void AddStepReward(int stepCount)
     {
         var offCourse = perrinn424Agent.CheckOffCourse();
-        if (stepCount % perrinn424Agent.DecisionPeriod == 0 && !offCourse)
+        var isAligned = perrinn424Agent.isAligned;
+        if (stepCount % perrinn424Agent.DecisionPeriod == 0)
         {
             var rewardScalingFactor = (float)perrinn424Agent.DecisionPeriod / perrinn424Agent.MaxStep;
             
-            // delta progress reward
-            perrinn424Agent.AddReward(rewardScalingFactor * perrinn424Agent.DeltaProgress);
-            
             var velocitySquared = Mathf.Pow(perrinn424Agent.Velocity.magnitude, 2);
+
+            var offCoursePenalty = - (perrinn424Agent.CumulativeTimeOffCourse - m_PreviousTimeOffCourse) * velocitySquared * offCoursePenaltyScale;
+
+            var wallPenalty = - (perrinn424Agent.CumulativeWallHitTime - m_PreviousWallHitTime) * velocitySquared * wallContactPenaltyScale;
+
+            var progressReward = !offCourse || !isAligned ? progressScale * perrinn424Agent.DeltaProgress : 0f;
             
-            // off course penalty
-            perrinn424Agent.AddReward(- (perrinn424Agent.CumulativeTimeOffCourse - m_PreviousTimeOffCourse) * velocitySquared * offCoursePenaltyScale);
+            // currentReward = progressReward + offCoursePenalty + wallPenalty;
+            currentReward = Mathf.Clamp(progressReward, 0f, 10f) + offCoursePenalty + wallPenalty;
             
-            // wall penalty
-            perrinn424Agent.AddReward( - (perrinn424Agent.CumulativeWallHitTime - m_PreviousWallHitTime) * velocitySquared * wallContactPenaltyScale);
+            perrinn424Agent.AddReward(rewardScalingFactor * currentReward);
             
             m_PreviousTimeOffCourse = perrinn424Agent.CumulativeTimeOffCourse;
             

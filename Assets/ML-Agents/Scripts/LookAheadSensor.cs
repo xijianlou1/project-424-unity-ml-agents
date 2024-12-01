@@ -101,5 +101,9 @@ public class LookAheadSensor : MonoBehaviour
             }
         }
     }
-    
+
+    public float TrackLength()
+    {
+        return m_CenterLineSpline.GetLength();
+    }
 }

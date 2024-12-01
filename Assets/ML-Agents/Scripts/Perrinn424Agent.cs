@@ -19,16 +19,18 @@ public class Perrinn424Agent : Agent
     public float brakeRate = 100f;
     public event Action wallHit;
     public event Action wallStay;
+    public bool randomStart = true;
 
     public int DecisionPeriod { get; private set; }
 
-    public float DeltaProgress => GetDeltaProgress() * Mathf.Sign(m_CenterlineAlignment);
+    public float DeltaProgress => GetDeltaProgress();
 
     Vector3 m_InitialPosition;
     Quaternion m_InitialRotation;
     Transform m_InitialTransform;
     Vector3 m_CurrentVelocity;
     Vector3 m_CurrentAcceleration;
+    Vector3 m_CurrentAngularVelocity;
     float m_CumulativeTimeOffCourse;
     float m_CumulativeWallHitTime;
     Rigidbody m_Rigidbody;
@@ -48,10 +50,13 @@ public class Perrinn424Agent : Agent
 
     public float CumulativeWallHitTime => m_CumulativeWallHitTime;
     
+    public bool isAligned => Mathf.Approximately(Mathf.Sign(m_CenterlineAlignment), 1f);
+    
     void FixedUpdate()
     {
         m_CurrentVelocity = stateEstimator.velocity;
         m_CurrentAcceleration = stateEstimator.acceleration;
+        m_CurrentAngularVelocity = stateEstimator.angularVelocity;
         CheckVertical();
         if (CheckOffCourse())
         {
@@ -103,7 +108,10 @@ public class Perrinn424Agent : Agent
         ResetVariables();
         ResetSensors();
         ResetControlInputs();
-        StartCoroutine(ResetPhysicsAndPose());
+        var (newPosition, newRotation) = (m_InitialPosition, m_InitialRotation.eulerAngles);
+        if (randomStart)
+            ( newPosition,  newRotation) = lookAheadSensor.SampleStartingPosition();
+        StartCoroutine(ResetPhysicsAndPose(newPosition, newRotation));
         m_CumulativeTimeOffCourse = 0f;
         m_CumulativeWallHitTime = 0f;
     }
@@ -114,9 +122,8 @@ public class Perrinn424Agent : Agent
         m_CenterlineAlignment = lookAheadSensor.CenterlineAlignment;
         m_PreviousProgress = m_CurrentProgress;
         m_CurrentProgress = centerlineProgress;
-        var terrainSense = terrainSensor.Sense().Sum();
         
-        // total observations : 44
+        // total observations : 54
         
         // linear velocity vec3 : 3
         sensor.AddObservation(m_CurrentVelocity);
@@ -124,11 +131,24 @@ public class Perrinn424Agent : Agent
         // linear acceleration vec3 : 3
         sensor.AddObservation(m_CurrentAcceleration);
         
+        // angular velocity vec3 : 3
+        sensor.AddObservation(m_CurrentAngularVelocity);
+        
         // centerline angle float : 1
         sensor.AddObservation(centerLineAngle);
         
-        // previous steering command float : 1
+        // centerline offset float : 1
+        sensor.AddObservation(centerLineOffset);
+        
+        // course progress vec2 : 2
+        sensor.AddObservation(progress);
+        
+        // previous commands float : 3
         sensor.AddObservation(m_PreviousActions.steeringAngle);
+        
+        sensor.AddObservation(m_PreviousActions.throttle);
+        
+        sensor.AddObservation(m_PreviousActions.brake);
         
         // wall contact bool : 1
         sensor.AddObservation(m_WallContact);
@@ -187,15 +207,16 @@ public class Perrinn424Agent : Agent
     public bool CheckOffCourse()
     {
         var terrainSense = terrainSensor.Sense().Sum();
-        return terrainSense >= 0.75f;
+        return terrainSense >= 0.5f;
     }
 
     void CheckVertical()
     {
         var agentUp = transform.up;
         var upAngle = Vector3.Angle(Vector3.up, agentUp);
-        if (upAngle > 45)
+        if (upAngle > 60)
         {
+            Debug.LogWarning("Up angle is greater than 45. Should be close to zero.");
             AddReward(-10f);
             EndEpisode();
         }
@@ -203,7 +224,11 @@ public class Perrinn424Agent : Agent
 
     float GetDeltaProgress()
     {
-        var deltaProgress = m_CurrentProgress > m_PreviousProgress ? m_CurrentProgress - m_PreviousProgress : 1 + m_CurrentProgress - m_PreviousProgress;
+        var radius = 2 * Mathf.PI;
+        var thetaCurrent = Mathf.Rad2Deg * m_CurrentProgress / radius;
+        var thetaPrevious = Mathf.Rad2Deg * m_PreviousProgress / radius;
+        var deltaTheta = Mathf.DeltaAngle(thetaPrevious, thetaCurrent);
+        var deltaProgress = deltaTheta * radius * lookAheadSensor.TrackLength();
         return deltaProgress;
     }
 
@@ -231,24 +256,13 @@ public class Perrinn424Agent : Agent
         };
     }
 
-    IEnumerator ResetPhysicsAndPose()
+    IEnumerator ResetPhysicsAndPose(Vector3 position, Vector3 direction)
     {
         Academy.Instance.AutomaticSteppingEnabled = false;
-        m_VehicleBase.enabled = false;
+        var rotation = Quaternion.LookRotation(direction);
+        m_VehicleBase.HardReposition(position, rotation, true);
         m_Rigidbody.isKinematic = false;
         yield return new WaitForSeconds(0.25f);
-        m_Rigidbody.velocity = Vector3.zero;
-        m_Rigidbody.angularVelocity = Vector3.zero;
-        yield return new WaitForSeconds(0.25f);
-        m_Rigidbody.isKinematic = true;
-        yield return new WaitForSeconds(0.25f);
-        m_Rigidbody.Move(m_InitialPosition, m_InitialRotation);
-        yield return new WaitForSeconds(0.25f);
-        m_Rigidbody.isKinematic = false;
-        yield return new WaitForSeconds(0.25f);
-        m_Rigidbody.velocity = Vector3.zero;
-        m_Rigidbody.angularVelocity = Vector3.zero;
         Academy.Instance.AutomaticSteppingEnabled = true;
-        m_VehicleBase.enabled = true;
     }
 }
