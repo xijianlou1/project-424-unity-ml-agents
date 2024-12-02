@@ -43,10 +43,9 @@ public class Perrinn424RewardSystem : MonoBehaviour
 
             var wallPenalty = - (perrinn424Agent.CumulativeWallHitTime - m_PreviousWallHitTime) * velocitySquared * wallContactPenaltyScale;
 
-            var progressReward = !offCourse || !isAligned ? progressScale * perrinn424Agent.DeltaProgress : 0f;
+            var progressReward = Mathf.Clamp(!offCourse ? progressScale * perrinn424Agent.DeltaProgress : 0f, 0f, 10f);
             
-            // currentReward = progressReward + offCoursePenalty + wallPenalty;
-            currentReward = Mathf.Clamp(progressReward, 0f, 10f) + offCoursePenalty + wallPenalty;
+            currentReward = progressReward + offCoursePenalty + wallPenalty;
             
             perrinn424Agent.AddReward(rewardScalingFactor * currentReward);
             
