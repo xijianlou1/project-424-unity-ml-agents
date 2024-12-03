@@ -118,7 +118,7 @@ public class Perrinn424Agent : Agent
     
     public override void CollectObservations(VectorSensor sensor)
     {
-        var (centerLineAngle, centerLineOffset, newLookahead, progress, centerlineProgress) = lookAheadSensor.Sense();
+        var (centerLineAngle, centerLineOffset, newLookahead, progress, centerlineProgress, newOuterLookahead, newInnerLookahead) = lookAheadSensor.Sense();
         m_CenterlineAlignment = lookAheadSensor.CenterlineAlignment;
         m_PreviousProgress = m_CurrentProgress;
         m_CurrentProgress = centerlineProgress;
@@ -144,20 +144,38 @@ public class Perrinn424Agent : Agent
         sensor.AddObservation(progress);
         
         // previous commands float : 3
-        sensor.AddObservation(m_PreviousActions.steeringAngle);
+        sensor.AddObservation(m_CurrentActions.steeringAngle);
         
-        sensor.AddObservation(m_PreviousActions.throttle);
+        sensor.AddObservation(m_CurrentActions.throttle);
         
-        sensor.AddObservation(m_PreviousActions.brake);
+        sensor.AddObservation(m_CurrentActions.brake);
         
         // wall contact bool : 1
         sensor.AddObservation(m_WallContact);
         
-        // look ahead sensor newLookAhead.length : 10
+        // look ahead sensor newLookAhead.length : 11
         foreach (var point in newLookahead)
         {
            sensor.AddObservation(transform.InverseTransformPoint(point));
         }
+        
+        // look ahead sensor newLookAhead.length : 11
+        foreach (var point in newOuterLookahead)
+        {
+            sensor.AddObservation(transform.InverseTransformPoint(point));
+        }
+        
+        // look ahead sensor newLookAhead.length : 11
+        foreach (var point in newInnerLookahead)
+        {
+            sensor.AddObservation(transform.InverseTransformPoint(point));
+        }
+        
+        // pitch
+        sensor.AddObservation(stateEstimator.pitch);
+        
+        // roll
+        sensor.AddObservation(stateEstimator.roll);
         
         // off-course check bool : 1
         sensor.AddObservation(CheckOffCourse());
@@ -216,8 +234,8 @@ public class Perrinn424Agent : Agent
         var upAngle = Vector3.Angle(Vector3.up, agentUp);
         if (upAngle > 60)
         {
-            Debug.LogWarning("Up angle is greater than 45. Should be close to zero.");
-            AddReward(-10f);
+            Debug.LogWarning("Up angle is greater than 60. Should be close to zero.");
+            AddReward(-1f);
             EndEpisode();
         }
     }

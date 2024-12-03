@@ -10,6 +10,8 @@ public class StateEstimator : MonoBehaviour
     public Vector3 velocity;
     public Vector3 acceleration;
     public Vector3 angularVelocity;
+    public float pitch;
+    public float roll;
 
     Vector3 m_PreviousVelocity;
 
@@ -21,7 +23,17 @@ public class StateEstimator : MonoBehaviour
         velocity = rb.transform.InverseTransformVector(rb.velocity);
         acceleration = (velocity - m_PreviousVelocity) / Time.fixedDeltaTime;
         angularVelocity = rb.transform.InverseTransformVector(rb.angularVelocity);
+        roll = -AdjustAngle(transform.rotation.eulerAngles.z);
+        pitch = AdjustAngle(transform.rotation.eulerAngles.x);
     }
+    
+    static float AdjustAngle(float angle)
+    {
+        if (angle > 180)
+            angle -= 360;
+        return angle;
+    }
+
 
     public void Reset()
     {
@@ -30,5 +42,7 @@ public class StateEstimator : MonoBehaviour
         velocity = Vector3.zero;
         acceleration = Vector3.zero;
         m_PreviousVelocity = Vector3.zero;
+        pitch = 0f;
+        roll = 0f;
     }
 }
