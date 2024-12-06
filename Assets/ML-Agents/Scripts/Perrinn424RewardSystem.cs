@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.MLAgents;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class Perrinn424RewardSystem : MonoBehaviour
 {
@@ -18,7 +19,14 @@ public class Perrinn424RewardSystem : MonoBehaviour
     [SerializeField]
     float offCoursePenaltyScale = 5e-4f;
     
-    public float currentReward;
+    [SerializeField]
+    float steeringAccelerationPenaltyScale = 5e-4f;
+    
+    public float currentTotalReward;
+    public float currentProgressReward;
+    public float currentWallContactPenalty;
+    public float currentOffCoursePenalty;
+    public float currentSteeringAccelerationPenalty;
 
     float m_PreviousTimeOffCourse;
     float m_PreviousWallHitTime;
@@ -43,15 +51,27 @@ public class Perrinn424RewardSystem : MonoBehaviour
 
             var wallPenalty = - (perrinn424Agent.CumulativeWallHitTime - m_PreviousWallHitTime) * velocitySquared * wallContactPenaltyScale;
 
-            var progressReward = Mathf.Clamp(!offCourse ? progressScale * perrinn424Agent.DeltaProgress : 0f, 0f, 10f);
+            // var steeringPenalty = -Mathf.Abs(perrinn424Agent.SteeringAcceleration) * steeringAccelerationPenaltyScale;
+
+            var progressReward = Mathf.Clamp(!offCourse && !(wallPenalty > 0f) ? progressScale * perrinn424Agent.DeltaProgress : 0f, 0f, 10f);
             
-            currentReward = progressReward + offCoursePenalty + wallPenalty;
+            currentProgressReward = progressReward;
             
-            perrinn424Agent.AddReward(rewardScalingFactor * currentReward);
+            currentWallContactPenalty = wallPenalty;
+            
+            currentOffCoursePenalty = offCoursePenalty;
+            
+            // currentSteeringAccelerationPenalty = steeringPenalty;
+            
+            // currentTotalReward = progressReward + offCoursePenalty + wallPenalty + steeringPenalty;
+            currentTotalReward = progressReward + offCoursePenalty + wallPenalty;
+            
+            perrinn424Agent.AddReward(rewardScalingFactor * currentTotalReward);
             
             m_PreviousTimeOffCourse = perrinn424Agent.CumulativeTimeOffCourse;
             
             m_PreviousWallHitTime = perrinn424Agent.CumulativeWallHitTime;
+            
         }
     }
 

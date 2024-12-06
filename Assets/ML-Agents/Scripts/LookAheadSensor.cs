@@ -8,10 +8,10 @@ public class LookAheadSensor : MonoBehaviour
 {
     [SerializeField]
     SplineContainer trackCenterLineSplineContainer;
-    
+
     [SerializeField]
     float lookAheadMaxTime = 5f;
-    
+
     [SerializeField]
     float minLookAheadVelocity = 5f;
 
@@ -20,18 +20,21 @@ public class LookAheadSensor : MonoBehaviour
 
     [SerializeField]
     float lookAheadPointSpacing = 10f;
-    
+
     [SerializeField]
     bool debug = true;
-    
+
     [SerializeField]
     Rigidbody rb;
 
     [SerializeField]
     float trackWidth = 7.5f;
+    
+    [SerializeField]
+    float debugSphereRadius = 0.1f;
 
     public float CenterlineAlignment => m_CenterlineAlignment;
-    
+
     Spline m_CenterLineSpline;
     Vector3 m_SplineRoot;
     Vector3 m_PreviousNearestPoint;
@@ -49,7 +52,7 @@ public class LookAheadSensor : MonoBehaviour
         m_SplineRoot = trackCenterLineSplineContainer.transform.position;
         m_TrackLength = trackCenterLineSplineContainer.CalculateLength();
     }
-    
+
     public (float, float3, Vector3[], Vector2, float, Vector3[], Vector3[]) Sense()
     {
         var currentTransform = transform;
@@ -63,33 +66,85 @@ public class LookAheadSensor : MonoBehaviour
         var forward = currentTransform.forward;
         var centerLineAngle = -Vector2.SignedAngle(new Vector2(centerLineDirection.x, centerLineDirection.z), new Vector2(forward.x, forward.z));
         m_CenterlineAlignment = Vector3.Dot(centerLineDirection, forward);
+
         // var newLookahead = new Vector3[lookAheadNumber + 1];
         var newCenterline = new Vector3[lookAheadNumber + 1];
         var newInnerline = new Vector3[lookAheadNumber + 1];
         var newOuterline = new Vector3[lookAheadNumber + 1];
-        newCenterline[0] = SplineUtility.GetPointAtLinearDistance(m_CenterLineSpline, t, 0, out var resultT) + (float3)m_SplineRoot;;
+        newCenterline[0] = GetPointAtLinearDistance(m_CenterLineSpline, t, 0, out var resultT) + (float3)m_SplineRoot;
+        ;
         var (outerPoint, innerPoint) = CalculateTrackPoints(newCenterline[0], SplineUtility.EvaluateTangent(m_CenterLineSpline, t));
         newInnerline[0] = innerPoint;
         newOuterline[0] = outerPoint;
+        if (Physics.Raycast(newCenterline[0], Vector3.down, out var centerHit, 10))
+        {
+            newCenterline[0] = centerHit.point;
+        }
+        
+        if (Physics.Raycast(newInnerline[0], Vector3.down, out var innerHit, 10))
+        {
+            newInnerline[0] = innerHit.point;
+        }
+
+        if (Physics.Raycast(newOuterline[0], Vector3.down, out var outterHit, 10))
+        {
+            newOuterline[0] = outterHit.point;
+        }
 
         for (int i = 1; i < lookAheadNumber + 1; i++)
-        {   var deltaTime = lookAheadMaxTime / (lookAheadNumber + 1);
-            var relativePoint = Mathf.Max(minLookAheadVelocity,transform.InverseTransformDirection(rb.velocity).magnitude) * deltaTime * i;
-            newCenterline[i] = SplineUtility.GetPointAtLinearDistance(m_CenterLineSpline, t, relativePoint, out resultT) + (float3)m_SplineRoot;
+        {
+            var deltaTime = lookAheadMaxTime / (lookAheadNumber + 1);
+            var relativePoint = Mathf.Max(minLookAheadVelocity, transform.InverseTransformDirection(rb.velocity).magnitude) * deltaTime * i;
+            newCenterline[i] = GetPointAtLinearDistance(m_CenterLineSpline, t, relativePoint, out resultT) + (float3)m_SplineRoot;
             (outerPoint, innerPoint) = CalculateTrackPoints(newCenterline[i], SplineUtility.EvaluateTangent(m_CenterLineSpline, resultT));
             newInnerline[i] = innerPoint;
             newOuterline[i] = outerPoint;
+            if (Physics.Raycast(newCenterline[i], Vector3.down, out centerHit, 10))
+            {
+                newCenterline[i] = centerHit.point;
+            }
+
+            ;
+
+            if (Physics.Raycast(newInnerline[i], Vector3.down, out innerHit, 10))
+            {
+                newInnerline[i] = innerHit.point;
+            }
+
+            ;
+
+            if (Physics.Raycast(newOuterline[i], Vector3.down, out outterHit, 10))
+            {
+                newOuterline[i] = outterHit.point;
+            }
+
+            ;
         }
-        
+
         var progress = new Vector2(Mathf.Sin(2 * Mathf.PI * t), Mathf.Cos(2 * Mathf.PI * t));
-        
+
         m_CenterlineBuffer = newCenterline;
         m_InnerlineBuffer = newInnerline;
         m_OuterlineBuffer = newOuterline;
-        
+
         return (centerLineAngle, centerLineOffset, newCenterline, progress, t, newOuterline, newInnerline);
     }
-    
+
+    public static float3 GetPointAtLinearDistance<T>(T spline, float fromT, float relativeDistance, out float resultPointT) where T : ISpline
+    {
+        var point = SplineUtility.GetPointAtLinearDistance(spline, fromT, relativeDistance, out resultPointT);
+        
+        // This assumes a looped spline. 
+        if (resultPointT >= 1)
+        {
+            var length = spline.GetLength();
+            resultPointT = (fromT + relativeDistance / length) % 1;
+            point = SplineUtility.EvaluatePosition(spline, resultPointT);
+
+        }
+        return point;
+    }
+
     (Vector3 outerPoint, Vector3 innerPoint) CalculateTrackPoints(Vector3 point, Vector3 direction)
     {
         var go = new GameObject();
@@ -100,7 +155,7 @@ public class LookAheadSensor : MonoBehaviour
         DestroyImmediate(go);
         return (outerPoint, innerPoint);
     }
-    
+
     public (Vector3, Vector3) SampleStartingPosition()
     {
         var randT = Random.Range(0f, 1f);
@@ -109,7 +164,6 @@ public class LookAheadSensor : MonoBehaviour
         return (newPosition, newForwardDirection);
     }
 
-    
     void OnDrawGizmos()
     {
         if (debug)
@@ -120,23 +174,23 @@ public class LookAheadSensor : MonoBehaviour
                 {
                     var oldColor = Gizmos.color;
                     Gizmos.color = Color.yellow;
-                    Gizmos.DrawSphere(point, 0.25f);
+                    Gizmos.DrawSphere(point, debugSphereRadius);
                     Gizmos.color = oldColor;
                 }
-                
+
                 foreach (var point in m_InnerlineBuffer)
                 {
                     var oldColor = Gizmos.color;
                     Gizmos.color = Color.yellow;
-                    Gizmos.DrawSphere(point, 0.25f);
+                    Gizmos.DrawSphere(point, debugSphereRadius);
                     Gizmos.color = oldColor;
                 }
-                
+
                 foreach (var point in m_OuterlineBuffer)
                 {
                     var oldColor = Gizmos.color;
                     Gizmos.color = Color.yellow;
-                    Gizmos.DrawSphere(point, 0.25f);
+                    Gizmos.DrawSphere(point, debugSphereRadius);
                     Gizmos.color = oldColor;
                 }
             }

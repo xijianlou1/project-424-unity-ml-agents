@@ -25,6 +25,8 @@ public class Perrinn424Agent : Agent
 
     public float DeltaProgress => GetDeltaProgress();
 
+    public float SteeringAcceleration => m_CurrentSteeringAcceleration;
+
     Vector3 m_InitialPosition;
     Quaternion m_InitialRotation;
     Transform m_InitialTransform;
@@ -43,6 +45,11 @@ public class Perrinn424Agent : Agent
     Sample m_CurrentActions;
     Sample m_PreviousActions;
     bool m_WallContact = false;
+    float m_PreviousSteering;
+    float m_CurrentSteeringVelocity;
+    float m_PreviousSteeringVelocity;
+    float m_CurrentSteeringAcceleration;
+    float m_PreviousSteeringAcceleration;
     
     public Vector3 Velocity => m_CurrentVelocity;
     
@@ -108,10 +115,16 @@ public class Perrinn424Agent : Agent
         ResetVariables();
         ResetSensors();
         ResetControlInputs();
-        var (newPosition, newRotation) = (m_InitialPosition, m_InitialRotation.eulerAngles);
         if (randomStart)
-            ( newPosition,  newRotation) = lookAheadSensor.SampleStartingPosition();
-        StartCoroutine(ResetPhysicsAndPose(newPosition, newRotation));
+        {
+            var ( newPosition,  newRotation) = lookAheadSensor.SampleStartingPosition();
+            StartCoroutine(ResetPhysicsAndPose(newPosition, newRotation));
+        }
+        else
+        {
+            StartCoroutine(ResetPhysicsAndPose(m_InitialPosition, m_InitialRotation));
+        }
+        
         m_CumulativeTimeOffCourse = 0f;
         m_CumulativeWallHitTime = 0f;
     }
@@ -182,12 +195,17 @@ public class Perrinn424Agent : Agent
         
         // off-course sense float[] : 4
         sensor.AddObservation(terrainSensor.Sense().ToArray());
+        
+        UpdateSteeringMetrics(m_CurrentActions.steeringAngle);
+        
+        // steering acceleration
+        // sensor.AddObservation(m_CurrentSteeringAcceleration);
     }
 
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
         float physicalWheelRange = InputManager.instance.settings.physicalWheelRange;
-        var steeringInput = 360f * Mathf.Clamp(actionBuffers.ContinuousActions[0] / m_SteeringSettings.steeringWheelRange * physicalWheelRange, -1.0f, 1.0f);
+        var steeringInput = 180f * Mathf.Clamp(actionBuffers.ContinuousActions[0] / m_SteeringSettings.steeringWheelRange * physicalWheelRange, -1.0f, 1.0f);
         steeringInput = Mathf.MoveTowards(m_CurrentActions.steeringAngle, steeringInput, steeringRate * Time.fixedDeltaTime * DecisionPeriod);
         var throttleInput = 100f * Mathf.Clamp01(actionBuffers.ContinuousActions[1]);
         throttleInput = Mathf.MoveTowards(m_CurrentActions.throttle, throttleInput, throttleRate * Time.fixedDeltaTime * DecisionPeriod);
@@ -222,6 +240,20 @@ public class Perrinn424Agent : Agent
         }
     }
 
+    static Vector2 FlattenPoint(Vector3 point)
+    {
+        return new Vector2(point.x, point.z);
+    }
+
+    void UpdateSteeringMetrics(float angle)
+    {
+        m_CurrentSteeringVelocity = (angle - m_PreviousSteering) / (Time.fixedDeltaTime * DecisionPeriod);
+        m_CurrentSteeringAcceleration = (m_CurrentSteeringVelocity - m_PreviousSteeringVelocity) / (Time.fixedDeltaTime * DecisionPeriod);
+        m_PreviousSteering = angle;
+        m_PreviousSteeringVelocity = m_CurrentSteeringVelocity;
+        m_PreviousSteeringAcceleration = m_CurrentSteeringAcceleration;
+    }
+
     public bool CheckOffCourse()
     {
         var terrainSense = terrainSensor.Sense().Sum();
@@ -232,10 +264,10 @@ public class Perrinn424Agent : Agent
     {
         var agentUp = transform.up;
         var upAngle = Vector3.Angle(Vector3.up, agentUp);
-        if (upAngle > 60)
+        if (upAngle > 45)
         {
-            Debug.LogWarning("Up angle is greater than 60. Should be close to zero.");
-            AddReward(-1f);
+            // Debug.LogWarning("Up angle is greater than 45. Should be close to zero.");
+            // AddReward(-1f);
             EndEpisode();
         }
     }
@@ -278,6 +310,15 @@ public class Perrinn424Agent : Agent
     {
         Academy.Instance.AutomaticSteppingEnabled = false;
         var rotation = Quaternion.LookRotation(direction);
+        m_VehicleBase.HardReposition(position, rotation, true);
+        m_Rigidbody.isKinematic = false;
+        yield return new WaitForSeconds(0.25f);
+        Academy.Instance.AutomaticSteppingEnabled = true;
+    }
+    
+    IEnumerator ResetPhysicsAndPose(Vector3 position, Quaternion rotation)
+    {
+        Academy.Instance.AutomaticSteppingEnabled = false;
         m_VehicleBase.HardReposition(position, rotation, true);
         m_Rigidbody.isKinematic = false;
         yield return new WaitForSeconds(0.25f);
