@@ -160,6 +160,10 @@ public class LookAheadSensor : MonoBehaviour
     {
         var randT = Random.Range(0f, 1f);
         var newPosition = trackCenterLineSplineContainer.EvaluatePosition(randT);
+        if (Physics.Raycast(newPosition, Vector3.down, out var hit, 10))
+        {
+            newPosition = hit.point;
+        }
         var newForwardDirection = trackCenterLineSplineContainer.EvaluateTangent(randT);
         return (newPosition, newForwardDirection);
     }

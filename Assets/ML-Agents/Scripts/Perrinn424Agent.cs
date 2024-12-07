@@ -8,6 +8,7 @@ using UnityEngine;
 using VehiclePhysics;
 using VehiclePhysics.InputManagement;
 using Perrinn424.AutopilotSystem;
+using Random = UnityEngine.Random;
 
 public class Perrinn424Agent : Agent
 {
@@ -114,14 +115,15 @@ public class Perrinn424Agent : Agent
     {
         ResetVariables();
         ResetSensors();
-        ResetControlInputs();
         if (randomStart)
         {
+            ResetControlInputs(true);
             var ( newPosition,  newRotation) = lookAheadSensor.SampleStartingPosition();
             StartCoroutine(ResetPhysicsAndPose(newPosition, newRotation));
         }
         else
         {
+            ResetControlInputs();
             StartCoroutine(ResetPhysicsAndPose(m_InitialPosition, m_InitialRotation));
         }
         
@@ -294,25 +296,40 @@ public class Perrinn424Agent : Agent
         stateEstimator.Reset();
     }
 
-    void ResetControlInputs()
+    void ResetControlInputs(bool random = false)
     {
-        m_AgentPilot.currentAgentSample = new Sample()
+        if (!random)
         {
-            steeringAngle = 0f, 
-            throttle = 0f, 
-            brake = 0f,
-            drsPosition = 0,
-            gear = 0,
-        };
+            m_AgentPilot.currentAgentSample = new Sample()
+            {
+                steeringAngle = 0f, 
+                throttle = 0f, 
+                brake = 0f,
+                drsPosition = 0,
+                gear = 0,
+            };   
+        }
+        else
+        {
+            m_AgentPilot.currentAgentSample = new Sample()
+            {
+                steeringAngle = Random.Range(-150f, 150f), 
+                throttle = Random.Range(0f, 100f), 
+                brake = Random.Range(0f, 100f),
+                drsPosition = 0,
+                gear = 1,
+            };
+        }
     }
 
     IEnumerator ResetPhysicsAndPose(Vector3 position, Vector3 direction)
     {
         Academy.Instance.AutomaticSteppingEnabled = false;
-        var rotation = Quaternion.LookRotation(direction);
+        var rotation = Quaternion.LookRotation(direction) * Quaternion.Euler(Vector3.up * Random.Range(-45f, 45f));
         m_VehicleBase.HardReposition(position, rotation, true);
         m_Rigidbody.isKinematic = false;
         yield return new WaitForSeconds(0.25f);
+        m_Rigidbody.velocity = Random.Range(0f, 100f) * m_VehicleBase.transform.forward;
         Academy.Instance.AutomaticSteppingEnabled = true;
     }
     
