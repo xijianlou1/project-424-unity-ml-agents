@@ -10,6 +10,9 @@ public class LookAheadSensor : MonoBehaviour
     SplineContainer trackCenterLineSplineContainer;
 
     [SerializeField]
+    float lookAheadMinTime = 1f;
+    
+    [SerializeField]
     float lookAheadMaxTime = 5f;
 
     [SerializeField]
@@ -67,35 +70,44 @@ public class LookAheadSensor : MonoBehaviour
         var centerLineAngle = -Vector2.SignedAngle(new Vector2(centerLineDirection.x, centerLineDirection.z), new Vector2(forward.x, forward.z));
         m_CenterlineAlignment = Vector3.Dot(centerLineDirection, forward);
 
-        // var newLookahead = new Vector3[lookAheadNumber + 1];
-        var newCenterline = new Vector3[lookAheadNumber + 1];
-        var newInnerline = new Vector3[lookAheadNumber + 1];
-        var newOuterline = new Vector3[lookAheadNumber + 1];
-        newCenterline[0] = GetPointAtLinearDistance(m_CenterLineSpline, t, 0, out var resultT) + (float3)m_SplineRoot;
-        ;
-        var (outerPoint, innerPoint) = CalculateTrackPoints(newCenterline[0], SplineUtility.EvaluateTangent(m_CenterLineSpline, t));
-        newInnerline[0] = innerPoint;
-        newOuterline[0] = outerPoint;
-        if (Physics.Raycast(newCenterline[0], Vector3.down, out var centerHit, 10))
-        {
-            newCenterline[0] = centerHit.point;
-        }
+        // var newCenterline = new Vector3[lookAheadNumber + 1];
+        // var newInnerline = new Vector3[lookAheadNumber + 1];
+        // var newOuterline = new Vector3[lookAheadNumber + 1];
+
+        var newCenterline = new Vector3[lookAheadNumber];
+        var newInnerline = new Vector3[lookAheadNumber];
+        var newOuterline = new Vector3[lookAheadNumber];
+        // newCenterline[0] = GetPointAtLinearDistance(m_CenterLineSpline, t, 0, out var resultT) + (float3)m_SplineRoot;
+        // ;
+        // var (outerPoint, innerPoint) = CalculateTrackPoints(newCenterline[0], SplineUtility.EvaluateTangent(m_CenterLineSpline, t));
+        // newInnerline[0] = innerPoint;
+        // newOuterline[0] = outerPoint;
+        // if (Physics.Raycast(newCenterline[0], Vector3.down, out var centerHit, 10))
+        // {
+        //     newCenterline[0] = centerHit.point;
+        // }
+        //
+        // if (Physics.Raycast(newInnerline[0], Vector3.down, out var innerHit, 10))
+        // {
+        //     newInnerline[0] = innerHit.point;
+        // }
+        //
+        // if (Physics.Raycast(newOuterline[0], Vector3.down, out var outterHit, 10))
+        // {
+        //     newOuterline[0] = outterHit.point;
+        // }
         
-        if (Physics.Raycast(newInnerline[0], Vector3.down, out var innerHit, 10))
-        {
-            newInnerline[0] = innerHit.point;
-        }
+        var initialPoint = transform.InverseTransformDirection(rb.velocity).magnitude * lookAheadMinTime;
+        
+        Vector3 innerPoint, outerPoint;
+        RaycastHit centerHit, innerHit, outterHit;
+        float resultT;
 
-        if (Physics.Raycast(newOuterline[0], Vector3.down, out var outterHit, 10))
+        for (int i = 0; i < lookAheadNumber; i++)
         {
-            newOuterline[0] = outterHit.point;
-        }
-
-        for (int i = 1; i < lookAheadNumber + 1; i++)
-        {
-            var deltaTime = lookAheadMaxTime / (lookAheadNumber + 1);
+            var deltaTime = (lookAheadMaxTime - lookAheadMinTime) / (lookAheadNumber + 1);
             var relativePoint = Mathf.Max(minLookAheadVelocity, transform.InverseTransformDirection(rb.velocity).magnitude) * deltaTime * i;
-            newCenterline[i] = GetPointAtLinearDistance(m_CenterLineSpline, t, relativePoint, out resultT) + (float3)m_SplineRoot;
+            newCenterline[i] = GetPointAtLinearDistance(m_CenterLineSpline, t, relativePoint + initialPoint, out resultT) + (float3)m_SplineRoot;
             (outerPoint, innerPoint) = CalculateTrackPoints(newCenterline[i], SplineUtility.EvaluateTangent(m_CenterLineSpline, resultT));
             newInnerline[i] = innerPoint;
             newOuterline[i] = outerPoint;

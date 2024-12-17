@@ -5,14 +5,14 @@ behaviors:
       batch_size: 1024
       buffer_size: 10240
       learning_rate: 0.0003
-      beta: 0.001
+      beta: 0.005
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3
       learning_rate_schedule: adaptive
       desired_lr_kl: 0.008
       lr_min: 1.0e-6
-      lr_max: 1.0e-2
+      lr_max: 3.0e-2
       beta_schedule: constant
       epsilon_schedule: constant
     network_settings:
@@ -24,7 +24,8 @@ behaviors:
       extrinsic:
         gamma: 0.98
         strength: 1.0
-    keep_checkpoints: 10
-    max_steps: 10000000
+    keep_checkpoints: 50
+    even_checkpoints: true
+    max_steps: 50000000
     time_horizon: 50
     summary_freq: 10240
