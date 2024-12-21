@@ -79993,9 +79993,9 @@ MonoBehaviour:
   lookAheadSensor: {fileID: 1579066240}
   terrainSensor: {fileID: 1268271368}
   stateEstimator: {fileID: 1232457444}
-  steeringRate: 90
-  throttleRate: 100
-  brakeRate: 100
+  steeringRate: 900
+  throttleRate: 1000
+  brakeRate: 1000
   randomStart: 0
 --- !u!114 &1448697907
 MonoBehaviour:
@@ -80019,7 +80019,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: 2bb55e3376c204f619c3fd9053676462, type: 3}
+  m_Model: {fileID: 5022602860645237092, guid: 17cb0065a972347bb88709b6dc90b0a8, type: 3}
   m_InferenceDevice: 0
   m_BehaviorType: 0
   m_BehaviorName: Perrinn424Agent
@@ -80042,7 +80042,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DecisionPeriod: 50
   DecisionStep: 0
-  TakeActionsBetweenDecisions: 1
+  TakeActionsBetweenDecisions: 0
 --- !u!1 &1473103013 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2476090975454418218, guid: f4b41eff2d99ceb45bcfc5a4a5e57b1e,
@@ -84153,12 +84153,12 @@ PrefabInstance:
     - target: {fileID: 5167941506383627321, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.31288844
+      value: -0.31288847
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506383627321, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.01314506
+      value: -0.013145068
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506383627321, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
@@ -84168,7 +84168,7 @@ PrefabInstance:
     - target: {fileID: 5167941506383627321, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.03986357
+      value: -0.039863575
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506463346355, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
@@ -84188,12 +84188,12 @@ PrefabInstance:
     - target: {fileID: 5167941506463346355, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.31288844
+      value: -0.31288847
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506463346355, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.01314506
+      value: -0.013145068
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506463346355, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
@@ -84203,7 +84203,7 @@ PrefabInstance:
     - target: {fileID: 5167941506463346355, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.03986357
+      value: -0.039863575
       objectReference: {fileID: 0}
     - target: {fileID: 5167941506463346365, guid: 45808ba070a2cb14faa0c7dba5c9ff79,
         type: 3}
