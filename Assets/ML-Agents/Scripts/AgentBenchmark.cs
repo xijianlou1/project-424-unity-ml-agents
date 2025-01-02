@@ -1,12 +1,11 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using ML_Agents.Scripts;
 using Perrinn424;
-using UnityEngine;
 using VehiclePhysics.Timing;
 using VehiclePhysics;
 
-public class AgentBenchmark : MonoBehaviour
+public class AgentBenchmark : VehicleBehaviour
 {
     int m_LapCount;
     Battery m_battery;
@@ -18,7 +17,7 @@ public class AgentBenchmark : MonoBehaviour
     float m_CurrentLapTime;
     float m_CurrentSectorTime;
     
-    Dictionary<string,List<Tuple<int, string>>> m_BenchmarkData = new ();
+    AgentBenchmarkData m_BenchmarkData = new ();
 
     void OnEnable()
     {
@@ -27,6 +26,7 @@ public class AgentBenchmark : MonoBehaviour
         {
             m_SectorCount = m_LapTimer.sectors;
             m_LapTimer.onSector += OnSector;
+            m_LapTimer.onBeginLap += LapBeginEventHandler;
         }
         m_SectorTimeRecords.Add(new List<float>());
         
@@ -51,9 +51,35 @@ public class AgentBenchmark : MonoBehaviour
             m_LapTimer.onSector -= OnSector;
         }
     }
-    
-    void Update()
+
+    void LapBeginEventHandler()
     {
+        var lastExtractedLarpData = m_BenchmarkData.ExtractedLarpData[^1];
+        var lastLarpData = m_BenchmarkData.LarpData[^1];
+        
+        // Use reflection to automate the property setting
+        var properties = typeof(ExtractedLarpData).GetProperties();
+
+        foreach (var property in properties)
+        {
+            var sourceProperty = typeof(LarpData).GetProperty(property.Name.Replace("Average", ""));
+            if (sourceProperty != null)
+            {
+                if (sourceProperty.GetValue(lastLarpData) is IEnumerable<float> sourceValue)
+                {
+                    property.SetValue(lastExtractedLarpData, sourceValue.Average());
+                }
+            }
+        }
+        
+        m_BenchmarkData.LarpData.Add(new LarpData());
+        m_BenchmarkData.ExtractedLarpData.Add(new ExtractedLarpData());
+    }
+    
+    public override void FixedUpdateVehicle ()
+    {
+        // FixedUpdateVehicle happens right after the vehicle simulation step, with all internal values updated.
+        
         var vehicleData = VehicleBase.vehicle.data.Get(Channel.Vehicle);
         var custom = VehicleBase.vehicle.data.Get(Channel.Custom);
         
@@ -65,7 +91,7 @@ public class AgentBenchmark : MonoBehaviour
 
         // Speed data (km/h)
         float speed = vehicleData[VehicleData.Speed] / 1000.0f;
-        m_BenchmarkData["Speed"].Add(new Tuple<int, string>(m_LapCount, (speed * 3.6f).ToString("0")));
+        m_BenchmarkData.LarpData[^1].Speed.Add(speed * 3.6f);
         
         // Gear data
         var gearId = vehicleData[VehicleData.GearboxGear];
@@ -77,9 +103,28 @@ public class AgentBenchmark : MonoBehaviour
             -1 => "R",
             _ => "R" + (-gearId).ToString()
         };
-        m_BenchmarkData["Gear"].Add(new Tuple<int, string>(m_LapCount, gear));
+        
+        m_BenchmarkData.LarpData[^1].Gear.Add(gear);
         
         // Battery data
-        // VehicleBase.vehicle.data.Get(Channel.Custom, );
+        if (m_battery != null)
+        {
+            m_BenchmarkData.LarpData[^1].TotalElecPower.Add(m_battery.Power);
+            m_BenchmarkData.LarpData[^1].BatterySOC.Add(m_battery.StateOfCharge * 100f);
+            m_BenchmarkData.LarpData[^1].BatteryCapacity.Add(m_battery.NetEnergy);
+        }
+        
+        // Controller data
+        // TODO: confirm the data bus channel get updated before FixedUpdateVehicle
+        m_BenchmarkData.LarpData[^1].ThrottlePosition.Add(custom[Perrinn424Data.ThrottlePosition]);
+        m_BenchmarkData.LarpData[^1].BrakePosition.Add(custom[Perrinn424Data.BrakePosition]);
+        m_BenchmarkData.LarpData[^1].SteeringAngle.Add(custom[Perrinn424Data.SteeringWheelAngle]);
+        m_BenchmarkData.LarpData[^1].EngagedGear.Add(custom[Perrinn424Data.EngagedGear]);
+        m_BenchmarkData.LarpData[^1].FrontPowertrain.Add(custom[Perrinn424Data.FrontDiffFriction]);
+        m_BenchmarkData.LarpData[^1].RearPowertrain.Add(custom[Perrinn424Data.RearDiffFriction]);
+        m_BenchmarkData.LarpData[^1].GroundTrackerFrontRideHeight.Add(custom[Perrinn424Data.FrontRideHeight]);
+        m_BenchmarkData.LarpData[^1].GroundTrackerRearRideHeight.Add(custom[Perrinn424Data.RearRideHeight]);
+        m_BenchmarkData.LarpData[^1].GroundTrackerFrontRollAngle.Add(custom[Perrinn424Data.FrontRollAngle]);
+        m_BenchmarkData.LarpData[^1].GroundTrackerRearRollAngle.Add(custom[Perrinn424Data.RearRollAngle]);
     }
 }
