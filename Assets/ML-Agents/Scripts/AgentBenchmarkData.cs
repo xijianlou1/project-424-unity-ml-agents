@@ -4,44 +4,45 @@ namespace ML_Agents.Scripts
 {
     public class AgentBenchmarkData
     {
-        public List<LarpData> LarpData;
-        public List<ExtractedLarpData> ExtractedLarpData;
+        public List<VehicleData> SectorData = new () {new VehicleData()};
+        public List<ProcessedVehicleData> ProcessedSectorData = new () {new ProcessedVehicleData()};
     }
 
-    public class LarpData
+    public class VehicleData
     {
-        public List<float> Speed;
-        public List<string> Gear;
-        public List<float> TotalElecPower;
-        public List<float> BatterySOC;
-        public List<float> BatteryCapacity;
-        public List<int> ThrottlePosition;
-        public List<float> BrakePosition;
-        public List<float> SteeringAngle;
-        public List<float> EngagedGear;
-        public List<float> FrontPowertrain;
-        public List<float> RearPowertrain;
-        public List<float> GroundTrackerFrontRideHeight;
-        public List<float> GroundTrackerRearRideHeight;
-        public List<float> GroundTrackerFrontRollAngle;
-        public List<float> GroundTrackerRearRollAngle;
+        public List<float> Speed { get; set; } = new();
+        public List<string> Gear { get; set; } = new();
+        public List<float> TotalElecPower { get; set; } = new();
+        public List<float> BatterySOC { get; set; } = new();
+        public List<float> BatteryCapacity { get; set; } = new();
+        public List<int> ThrottlePosition { get; set; } = new();
+        public List<float> BrakePosition { get; set; } = new();
+        public List<float> SteeringAngle { get; set; } = new();
+        public List<float> EngagedGear { get; set; } = new();
+        public List<float> FrontPowertrain { get; set; } = new();
+        public List<float> RearPowertrain { get; set; } = new();
+        public List<float> GroundTrackerFrontRideHeight { get; set; } = new();
+        public List<float> GroundTrackerRearRideHeight { get; set; } = new();
+        public List<float> GroundTrackerFrontRollAngle { get; set; } = new();
+        public List<float> GroundTrackerRearRollAngle { get; set; } = new();
     }
 
-    public class ExtractedLarpData
+    public class ProcessedVehicleData
     {
-        public float AverageSpeed;
-        public float AverageTotalElecPower;
-        public float AverageBatterySOC;
-        public float AverageBatteryCapacity;
-        public float AverageTrottlePosition;
-        public float AverageBrakePosition;
-        public float AverageSteeringAngle;
-        public float AverageEngagedGear;
-        public float AverageFrontPowertrain;
-        public float AverageRearPowertrain;
-        public float AverageGroundTrackerFrontRideHeight;
-        public float AverageGroundTrackerRearRideHeight;
-        public float AverageGroundTrackerFrontRollAngle;
-        public float AverageGroundTrackerRearRollAngle;
+        public float Time { get; set; }
+        public float AverageSpeed { get; set; }
+        public float AverageTotalElecPower { get; set; }
+        public float AverageBatterySOC { get; set; }
+        public float AverageBatteryCapacity { get; set; }
+        public float AverageTrottlePosition { get; set; }
+        public float AverageBrakePosition { get; set; }
+        public float AverageSteeringAngle { get; set; }
+        public float AverageEngagedGear { get; set; }
+        public float AverageFrontPowertrain { get; set; }
+        public float AverageRearPowertrain { get; set; }
+        public float AverageGroundTrackerFrontRideHeight { get; set; }
+        public float AverageGroundTrackerRearRideHeight { get; set; }
+        public float AverageGroundTrackerFrontRollAngle { get; set; }
+        public float AverageGroundTrackerRearRollAngle { get; set; }
     }
 }
