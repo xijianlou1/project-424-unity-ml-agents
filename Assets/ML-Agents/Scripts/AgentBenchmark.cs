@@ -37,6 +37,7 @@ namespace Perrinn424
 
         void OnSector(int sector, float sectorTime)
         {
+            // Process the sector data
             var lastProcessedSectorData = m_BenchmarkData.ProcessedSectorData[^1];
             var lastSectorData = m_BenchmarkData.SectorData[^1];
             // Use reflection to automate the properties
@@ -56,6 +57,7 @@ namespace Perrinn424
 
             m_BenchmarkData.ProcessedSectorData[^1].Time = sectorTime;
 
+            // Reset the sector data
             m_SectorTimeRecords[^1].Add(sectorTime);
             if (m_SectorTimeRecords[^1].Count == m_SectorNumPerLap)
             {
@@ -66,7 +68,6 @@ namespace Perrinn424
 
             m_BenchmarkData.ProcessedSectorData.Add(new ProcessedVehicleData());
             m_BenchmarkData.SectorData.Add(new VehicleData());
-            Debug.Log("Added from OnSector");
         }
 
         public override void OnDisableVehicle()
@@ -98,21 +99,26 @@ namespace Perrinn424
                 m_CurrentSectorTime = m_LapTimer.currentSectorTime;
             }
             
-            // Speed data (km/h)
-            float speed = vehicleData[VehiclePhysics.VehicleData.Speed] / 1000.0f;
-            m_BenchmarkData.SectorData[^1].Speed.Add(speed * 3.6f);
+            // Vehicle data
+            var speed = vehicleData[VehiclePhysics.VehicleData.Speed] / 1000.0f;
+            m_BenchmarkData.SectorData[^1].Speed.Add(speed * 3.6f); // Speed data (km/h)
+            m_BenchmarkData.SectorData[^1].EngineRpm.Add(vehicleData[VehiclePhysics.VehicleData.EngineRpm]);
+            m_BenchmarkData.SectorData[^1].EngineTorque.Add(vehicleData[VehiclePhysics.VehicleData.EngineTorque]);
+            m_BenchmarkData.SectorData[^1].EngineLoad.Add(vehicleData[VehiclePhysics.VehicleData.EngineLoad]);
+            m_BenchmarkData.SectorData[^1].EnginePower.Add(vehicleData[VehiclePhysics.VehicleData.EnginePower]);
+            m_BenchmarkData.SectorData[^1].AidedSteer.Add(vehicleData[VehiclePhysics.VehicleData.AidedSteer]);
+        
             
             // Gear data
             var gearId = vehicleData[VehiclePhysics.VehicleData.GearboxGear];
             var switchingGear = vehicleData[VehiclePhysics.VehicleData.GearboxShifting] != 0;
-            string gear = gearId switch
+            var gear = gearId switch
             {
                 0 => switchingGear ? " " : "N",
                 > 0 => "D",
                 -1 => "R",
                 _ => "R" + -gearId
             };
-            
             m_BenchmarkData.SectorData[^1].Gear.Add(gear);
             
             // Battery data
