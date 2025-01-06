@@ -1,25 +1,20 @@
-using System.Collections.Generic;
-using System.Linq;
 using ML_Agents.Scripts;
 using UnityEngine;
 using VehiclePhysics.Timing;
 using VehiclePhysics;
-using VehicleData = ML_Agents.Scripts.VehicleData;
 
 namespace Perrinn424
 {
     public class AgentBenchmark : VehicleBehaviour
     {
-        [SerializeField]
-        LapTimer m_LapTimer;
-        
-        int m_LapCount;
+        [SerializeField] LapTimer m_LapTimer;
+        [SerializeField] bool m_IsAgentBenchmark = true;
+        [SerializeField] int m_BenchmarkLapNum = 10;
+
         Battery m_battery;
         int m_SectorNumPerLap;
-        List<List<float>> m_SectorTimeRecords = new();
-        List<float> m_LapTimeRecords = new();
-        float m_CurrentLapTime;
-        float m_CurrentSectorTime;
+        int m_SectorNum;
+        int m_LapNum;
 
         AgentBenchmarkData m_BenchmarkData = new();
 
@@ -31,43 +26,36 @@ namespace Perrinn424
                 m_LapTimer.onSector += OnSector;
                 m_LapTimer.onBeginLap += LapBeginEventHandler;
             }
-
-            m_SectorTimeRecords.Add(new List<float>());
         }
 
         void OnSector(int sector, float sectorTime)
         {
-            // Process the sector data
-            var lastProcessedSectorData = m_BenchmarkData.ProcessedSectorData[^1];
-            var lastSectorData = m_BenchmarkData.SectorData[^1];
-            // Use reflection to automate the properties
-            var properties = typeof(ProcessedVehicleData).GetProperties();
-
-            foreach (var property in properties)
+            var sectorSampleNum = m_BenchmarkData.Speed.Count - m_BenchmarkData.SectorFlag.Count;
+            for (var i = 0; i < sectorSampleNum - 1; i++)
             {
-                var sourceProperty = typeof(VehicleData).GetProperty(property.Name.Replace("Average", ""));
-                if (sourceProperty != null)
+                m_BenchmarkData.SectorFlag.Add(false);
+                m_BenchmarkData.SectorTime.Add(0);
+            }
+            m_BenchmarkData.SectorFlag.Add(true);
+            m_BenchmarkData.SectorTime.Add(sectorTime);
+            m_SectorNum++;
+            Debug.Log("Sector: " + sector + " Time: " + sectorTime);
+            
+            if (m_SectorNum == m_SectorNumPerLap)
+            {
+                var lapSampleNum = m_BenchmarkData.Speed.Count - m_BenchmarkData.LapFlag.Count;
+                for (var i = 0; i < lapSampleNum - 1 ; i++)
                 {
-                    if (sourceProperty.GetValue(lastSectorData) is IEnumerable<float> sourceValue)
-                    {
-                        property.SetValue(lastProcessedSectorData, sourceValue.Average());
-                    }
+                    m_BenchmarkData.LapFlag.Add(false);
                 }
+                m_BenchmarkData.LapFlag.Add(true);
+                m_LapNum++;
             }
-
-            m_BenchmarkData.ProcessedSectorData[^1].Time = sectorTime;
-
-            // Reset the sector data
-            m_SectorTimeRecords[^1].Add(sectorTime);
-            if (m_SectorTimeRecords[^1].Count == m_SectorNumPerLap)
-            {
-                m_LapTimeRecords.Add(m_SectorTimeRecords[^1].Sum());
-                m_SectorTimeRecords.Add(new List<float>());
-                m_LapCount++;
-            }
-
-            m_BenchmarkData.ProcessedSectorData.Add(new ProcessedVehicleData());
-            m_BenchmarkData.SectorData.Add(new VehicleData());
+            
+            // Save benchmark data to csv
+            if (m_BenchmarkLapNum == m_LapNum)
+                AgentBenchmarkDataUtils.SaveToCsv(m_BenchmarkData.ToDataTable(), 
+                    m_IsAgentBenchmark ? "AgentPilotBenchmarkData.csv":"AutoPilotBenchmarkData.csv");
         }
 
         public override void OnDisableVehicle()
@@ -80,7 +68,6 @@ namespace Perrinn424
 
         void LapBeginEventHandler()
         {
-
         }
 
         public override void FixedUpdateVehicle()
@@ -93,22 +80,17 @@ namespace Perrinn424
 
             var vehicleData = vehicle.data.Get(Channel.Vehicle);
             var custom = vehicle.data.Get(Channel.Custom);
-            if (m_LapTimer != null)
-            {
-                m_CurrentLapTime = m_LapTimer.currentLapTime;
-                m_CurrentSectorTime = m_LapTimer.currentSectorTime;
-            }
-            
+
             // Vehicle data
             var speed = vehicleData[VehiclePhysics.VehicleData.Speed] / 1000.0f;
-            m_BenchmarkData.SectorData[^1].Speed.Add(speed * 3.6f); // Speed data (km/h)
-            m_BenchmarkData.SectorData[^1].EngineRpm.Add(vehicleData[VehiclePhysics.VehicleData.EngineRpm]);
-            m_BenchmarkData.SectorData[^1].EngineTorque.Add(vehicleData[VehiclePhysics.VehicleData.EngineTorque]);
-            m_BenchmarkData.SectorData[^1].EngineLoad.Add(vehicleData[VehiclePhysics.VehicleData.EngineLoad]);
-            m_BenchmarkData.SectorData[^1].EnginePower.Add(vehicleData[VehiclePhysics.VehicleData.EnginePower]);
-            m_BenchmarkData.SectorData[^1].AidedSteer.Add(vehicleData[VehiclePhysics.VehicleData.AidedSteer]);
-        
-            
+            m_BenchmarkData.Speed.Add(speed * 3.6f); // Speed data (km/h)
+            m_BenchmarkData.EngineRpm.Add(vehicleData[VehiclePhysics.VehicleData.EngineRpm]);
+            m_BenchmarkData.EngineTorque.Add(vehicleData[VehiclePhysics.VehicleData.EngineTorque]);
+            m_BenchmarkData.EngineLoad.Add(vehicleData[VehiclePhysics.VehicleData.EngineLoad]);
+            m_BenchmarkData.EnginePower.Add(vehicleData[VehiclePhysics.VehicleData.EnginePower]);
+            m_BenchmarkData.AidedSteer.Add(vehicleData[VehiclePhysics.VehicleData.AidedSteer]);
+
+
             // Gear data
             var gearId = vehicleData[VehiclePhysics.VehicleData.GearboxGear];
             var switchingGear = vehicleData[VehiclePhysics.VehicleData.GearboxShifting] != 0;
@@ -119,28 +101,28 @@ namespace Perrinn424
                 -1 => "R",
                 _ => "R" + -gearId
             };
-            m_BenchmarkData.SectorData[^1].Gear.Add(gear);
-            
+            m_BenchmarkData.Gear.Add(gear);
+
             // Battery data
             if (m_battery != null)
             {
-                m_BenchmarkData.SectorData[^1].TotalElecPower.Add(m_battery.Power);
-                m_BenchmarkData.SectorData[^1].BatterySOC.Add(m_battery.StateOfCharge * 100f);
-                m_BenchmarkData.SectorData[^1].BatteryCapacity.Add(m_battery.NetEnergy);
+                m_BenchmarkData.TotalElecPower.Add(m_battery.Power);
+                m_BenchmarkData.BatterySOC.Add(m_battery.StateOfCharge * 100f);
+                m_BenchmarkData.BatteryCapacity.Add(m_battery.NetEnergy);
             }
-            
+
             // Controller data
             // TODO: confirm the data bus channel get updated before FixedUpdateVehicle
-            m_BenchmarkData.SectorData[^1].ThrottlePosition.Add(custom[Perrinn424Data.ThrottlePosition]);
-            m_BenchmarkData.SectorData[^1].BrakePosition.Add(custom[Perrinn424Data.BrakePosition]);
-            m_BenchmarkData.SectorData[^1].SteeringAngle.Add(custom[Perrinn424Data.SteeringWheelAngle]);
-            m_BenchmarkData.SectorData[^1].EngagedGear.Add(custom[Perrinn424Data.EngagedGear]);
-            m_BenchmarkData.SectorData[^1].FrontPowertrain.Add(custom[Perrinn424Data.FrontDiffFriction]);
-            m_BenchmarkData.SectorData[^1].RearPowertrain.Add(custom[Perrinn424Data.RearDiffFriction]);
-            m_BenchmarkData.SectorData[^1].GroundTrackerFrontRideHeight.Add(custom[Perrinn424Data.FrontRideHeight]);
-            m_BenchmarkData.SectorData[^1].GroundTrackerRearRideHeight.Add(custom[Perrinn424Data.RearRideHeight]);
-            m_BenchmarkData.SectorData[^1].GroundTrackerFrontRollAngle.Add(custom[Perrinn424Data.FrontRollAngle]);
-            m_BenchmarkData.SectorData[^1].GroundTrackerRearRollAngle.Add(custom[Perrinn424Data.RearRollAngle]);
+            m_BenchmarkData.ThrottlePosition.Add(custom[Perrinn424Data.ThrottlePosition]);
+            m_BenchmarkData.BrakePosition.Add(custom[Perrinn424Data.BrakePosition]);
+            m_BenchmarkData.SteeringAngle.Add(custom[Perrinn424Data.SteeringWheelAngle]);
+            m_BenchmarkData.EngagedGear.Add(custom[Perrinn424Data.EngagedGear]);
+            m_BenchmarkData.FrontPowertrain.Add(custom[Perrinn424Data.FrontDiffFriction]);
+            m_BenchmarkData.RearPowertrain.Add(custom[Perrinn424Data.RearDiffFriction]);
+            m_BenchmarkData.GroundTrackerFrontRideHeight.Add(custom[Perrinn424Data.FrontRideHeight]);
+            m_BenchmarkData.GroundTrackerRearRideHeight.Add(custom[Perrinn424Data.RearRideHeight]);
+            m_BenchmarkData.GroundTrackerFrontRollAngle.Add(custom[Perrinn424Data.FrontRollAngle]);
+            m_BenchmarkData.GroundTrackerRearRollAngle.Add(custom[Perrinn424Data.RearRollAngle]);
         }
     }
 }
