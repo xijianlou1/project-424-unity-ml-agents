@@ -34,7 +34,7 @@ namespace ML_Agents.Scripts
         public float AverageTotalElecPower { get; set; }
         public float AverageBatterySOC { get; set; }
         public float AverageBatteryCapacity { get; set; }
-        public float AverageTrottlePosition { get; set; }
+        public float AverageThrottlePosition { get; set; }
         public float AverageBrakePosition { get; set; }
         public float AverageSteeringAngle { get; set; }
         public float AverageEngagedGear { get; set; }
