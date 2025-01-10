@@ -9,7 +9,8 @@ namespace Perrinn424
     {
         [SerializeField] LapTimer m_LapTimer;
         [SerializeField] bool m_IsAgentBenchmark = true;
-        [SerializeField] int m_BenchmarkLapNum = 10;
+        [SerializeField] int m_BenchmarkLapNum = 1;
+        [SerializeField] Rigidbody m_Rigidbody;
 
         Battery m_battery;
         int m_SectorNumPerLap;
@@ -53,7 +54,7 @@ namespace Perrinn424
             }
             
             // Save benchmark data to csv
-            if (m_BenchmarkLapNum == m_LapNum)
+            if (m_BenchmarkLapNum == m_LapNum)  
                 AgentBenchmarkDataUtils.SaveToCsv(m_BenchmarkData.ToDataTable(), 
                     m_IsAgentBenchmark ? "AgentPilotBenchmarkData.csv":"AutoPilotBenchmarkData.csv");
         }
@@ -82,14 +83,13 @@ namespace Perrinn424
             var custom = vehicle.data.Get(Channel.Custom);
 
             // Vehicle data
-            var speed = vehicleData[VehiclePhysics.VehicleData.Speed] / 1000.0f;
-            m_BenchmarkData.Speed.Add(speed * 3.6f); // Speed data (km/h)
+            var speed = m_Rigidbody.velocity.magnitude;
+            m_BenchmarkData.Speed.Add(speed); // Speed data (km/h)
             m_BenchmarkData.EngineRpm.Add(vehicleData[VehiclePhysics.VehicleData.EngineRpm]);
             m_BenchmarkData.EngineTorque.Add(vehicleData[VehiclePhysics.VehicleData.EngineTorque]);
             m_BenchmarkData.EngineLoad.Add(vehicleData[VehiclePhysics.VehicleData.EngineLoad]);
             m_BenchmarkData.EnginePower.Add(vehicleData[VehiclePhysics.VehicleData.EnginePower]);
             m_BenchmarkData.AidedSteer.Add(vehicleData[VehiclePhysics.VehicleData.AidedSteer]);
-
 
             // Gear data
             var gearId = vehicleData[VehiclePhysics.VehicleData.GearboxGear];
@@ -113,16 +113,16 @@ namespace Perrinn424
 
             // Controller data
             // TODO: confirm the data bus channel get updated before FixedUpdateVehicle
-            m_BenchmarkData.ThrottlePosition.Add(custom[Perrinn424Data.ThrottlePosition]);
-            m_BenchmarkData.BrakePosition.Add(custom[Perrinn424Data.BrakePosition]);
-            m_BenchmarkData.SteeringAngle.Add(custom[Perrinn424Data.SteeringWheelAngle]);
+            m_BenchmarkData.ThrottlePosition.Add(custom[Perrinn424Data.ThrottlePosition] / 1000.0f);
+            m_BenchmarkData.BrakePosition.Add(custom[Perrinn424Data.BrakePosition] / 1000.0f);
+            m_BenchmarkData.SteeringAngle.Add(custom[Perrinn424Data.SteeringWheelAngle] / 1000.0f);
             m_BenchmarkData.EngagedGear.Add(custom[Perrinn424Data.EngagedGear]);
-            m_BenchmarkData.FrontPowertrain.Add(custom[Perrinn424Data.FrontDiffFriction]);
-            m_BenchmarkData.RearPowertrain.Add(custom[Perrinn424Data.RearDiffFriction]);
-            m_BenchmarkData.GroundTrackerFrontRideHeight.Add(custom[Perrinn424Data.FrontRideHeight]);
-            m_BenchmarkData.GroundTrackerRearRideHeight.Add(custom[Perrinn424Data.RearRideHeight]);
-            m_BenchmarkData.GroundTrackerFrontRollAngle.Add(custom[Perrinn424Data.FrontRollAngle]);
-            m_BenchmarkData.GroundTrackerRearRollAngle.Add(custom[Perrinn424Data.RearRollAngle]);
+            m_BenchmarkData.FrontPowertrain.Add(custom[Perrinn424Data.FrontDiffFriction] / 1000.0f);
+            m_BenchmarkData.RearPowertrain.Add(custom[Perrinn424Data.RearDiffFriction] / 1000.0f);
+            m_BenchmarkData.GroundTrackerFrontRideHeight.Add(custom[Perrinn424Data.FrontRideHeight] / 1000.0f);
+            m_BenchmarkData.GroundTrackerRearRideHeight.Add(custom[Perrinn424Data.RearRideHeight] / 1000.0f);
+            m_BenchmarkData.GroundTrackerFrontRollAngle.Add(custom[Perrinn424Data.FrontRollAngle] / 1000.0f);
+            m_BenchmarkData.GroundTrackerRearRollAngle.Add(custom[Perrinn424Data.RearRollAngle] / 1000.0f);
         }
     }
 }

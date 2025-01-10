@@ -17,7 +17,7 @@ namespace ML_Agents.Scripts
         public List<float> TotalElecPower { get; set; } = new();
         public List<float> BatterySOC { get; set; } = new();
         public List<float> BatteryCapacity { get; set; } = new();
-        public List<int> ThrottlePosition { get; set; } = new();
+        public List<float> ThrottlePosition { get; set; } = new();
         public List<float> BrakePosition { get; set; } = new();
         public List<float> SteeringAngle { get; set; } = new();
         public List<float> EngagedGear { get; set; } = new();
