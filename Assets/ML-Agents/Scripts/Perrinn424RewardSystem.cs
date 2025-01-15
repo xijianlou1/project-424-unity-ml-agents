@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Collections;
 using Unity.MLAgents;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -22,25 +19,36 @@ public class Perrinn424RewardSystem : MonoBehaviour
     [SerializeField]
     float steeringAccelerationPenaltyScale = 5e-4f;
     
+    [SerializeField]
+    float velocityRewardScale = 5e-4f;
+    
+    [SerializeField]
+    float lapCompletionBonus = 1f;
+    
+    [FormerlySerializedAs("vehiclePhysicsEstimator")] [SerializeField]
+    VehiclePhysicsEstimator m_VehiclePhysicsEstimator;
+    
     public float currentTotalReward;
-    public float currentProgressReward;
-    public float currentWallContactPenalty;
-    public float currentOffCoursePenalty;
-    public float currentSteeringAccelerationPenalty;
 
     float m_PreviousTimeOffCourse;
     float m_PreviousWallHitTime;
+    float m_PreviousSteeringAngle;
+    bool m_IsLapComplete;
     
     void OnEnable()
     {
         Academy.Instance.AgentPreStep += AddStepReward;
-        // perrinn424Agent.wallHit += OnWallHit;
+        m_VehiclePhysicsEstimator.OnLapComplete += OnLapComplete;
+    }
+    
+    void OnLapComplete()
+    {
+        m_IsLapComplete = true;
     }
 
     void AddStepReward(int stepCount)
     {
         var offCourse = perrinn424Agent.CheckOffCourse();
-        var isAligned = perrinn424Agent.isAligned;
         if (stepCount % perrinn424Agent.DecisionPeriod == 0)
         {
             var rewardScalingFactor = (float)perrinn424Agent.DecisionPeriod / perrinn424Agent.MaxStep;
@@ -52,19 +60,22 @@ public class Perrinn424RewardSystem : MonoBehaviour
             var wallPenalty = - (perrinn424Agent.CumulativeWallHitTime - m_PreviousWallHitTime) * velocitySquared * wallContactPenaltyScale;
 
             // var steeringPenalty = -Mathf.Abs(perrinn424Agent.SteeringAcceleration) * steeringAccelerationPenaltyScale;
+            
+            var steeringAccelerationPenalty = - Mathf.Abs(m_PreviousSteeringAngle - m_VehiclePhysicsEstimator.m_CurrentSteeringAngle) / Time.fixedDeltaTime * steeringAccelerationPenaltyScale;
+            m_PreviousSteeringAngle = m_VehiclePhysicsEstimator.m_CurrentSteeringAngle;
+
+            var lapCompleteReward = 0f;
+            if (m_IsLapComplete)
+            {
+                lapCompleteReward = lapCompletionBonus;
+                m_IsLapComplete = false;
+            }
+
+            var velocityReward = perrinn424Agent.Velocity.magnitude * velocityRewardScale;
 
             var progressReward = Mathf.Clamp(!offCourse && !(wallPenalty > 0f) ? progressScale * perrinn424Agent.DeltaProgress : 0f, 0f, 10f);
-            
-            currentProgressReward = progressReward;
-            
-            currentWallContactPenalty = wallPenalty;
-            
-            currentOffCoursePenalty = offCoursePenalty;
-            
-            // currentSteeringAccelerationPenalty = steeringPenalty;
-            
-            // currentTotalReward = progressReward + offCoursePenalty + wallPenalty + steeringPenalty;
-            currentTotalReward = progressReward + offCoursePenalty + wallPenalty;
+
+            currentTotalReward = progressReward + offCoursePenalty + wallPenalty + steeringAccelerationPenalty + lapCompleteReward + velocityReward;
             
             perrinn424Agent.AddReward(rewardScalingFactor * currentTotalReward);
             
